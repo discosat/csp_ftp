@@ -1,0 +1,89 @@
+Build started at 2022-11-09T10:06:19.128352
+Main binary: /usr/bin/python3
+Build Options: 
+Python system: Linux
+The Meson build system
+Version: 0.56.1
+Source dir: /home/pi/csh/lib/csp_ftp
+Build dir: /home/pi/csh/lib/csp_ftp/builddir
+Build type: native build
+Project name: csp_ftp
+Project version: undefined
+None of 'CC' are defined in the environment, not changing global flags.
+None of 'CFLAGS' are defined in the environment, not changing global flags.
+None of 'LDFLAGS' are defined in the environment, not changing global flags.
+None of 'CPPFLAGS' are defined in the environment, not changing global flags.
+None of 'CC_LD' are defined in the environment, not changing global flags.
+Sanity testing C compiler: cc
+Is cross compiler: False.
+None of 'CC_LD' are defined in the environment, not changing global flags.
+Sanity check compiler command line: cc /home/pi/csh/lib/csp_ftp/builddir/meson-private/sanitycheckc.c -o /home/pi/csh/lib/csp_ftp/builddir/meson-private/sanitycheckc.exe -pipe -D_FILE_OFFSET_BITS=64
+Sanity check compile stdout:
+
+-----
+Sanity check compile stderr:
+
+-----
+Running test binary command: /home/pi/csh/lib/csp_ftp/builddir/meson-private/sanitycheckc.exe
+C compiler for the host machine: cc (gcc 8.3.0 "cc (Raspbian 8.3.0-6+rpi1) 8.3.0")
+C linker for the host machine: cc ld.bfd 2.31.1
+None of 'AR' are defined in the environment, not changing global flags.
+None of 'CC' are defined in the environment, not changing global flags.
+None of 'CFLAGS' are defined in the environment, not changing global flags.
+None of 'LDFLAGS' are defined in the environment, not changing global flags.
+None of 'CPPFLAGS' are defined in the environment, not changing global flags.
+None of 'CC_LD' are defined in the environment, not changing global flags.
+Sanity testing C compiler: cc
+Is cross compiler: False.
+None of 'CC_LD' are defined in the environment, not changing global flags.
+Sanity check compiler command line: cc /home/pi/csh/lib/csp_ftp/builddir/meson-private/sanitycheckc.c -o /home/pi/csh/lib/csp_ftp/builddir/meson-private/sanitycheckc.exe -pipe -D_FILE_OFFSET_BITS=64
+Sanity check compile stdout:
+
+-----
+Sanity check compile stderr:
+
+-----
+Running test binary command: /home/pi/csh/lib/csp_ftp/builddir/meson-private/sanitycheckc.exe
+C compiler for the build machine: cc (gcc 8.3.0 "cc (Raspbian 8.3.0-6+rpi1) 8.3.0")
+C linker for the build machine: cc ld.bfd 2.31.1
+None of 'AR' are defined in the environment, not changing global flags.
+Build machine cpu family: arm
+Build machine cpu: armv7l
+Host machine cpu family: arm
+Host machine cpu: armv7l
+Target machine cpu family: arm
+Target machine cpu: armv7l
+Configuring libcsp_ftp.h using configuration
+Pkg-config binary for MachineChoice.HOST is not cached.
+None of 'PKG_CONFIG' are defined in the environment, not changing global flags.
+Pkg-config binary missing from cross or native file, or env var undefined.
+Trying a default Pkg-config fallback at pkg-config
+Found pkg-config: /usr/bin/pkg-config (0.29)
+Determining dependency 'csp' with pkg-config executable '/usr/bin/pkg-config'
+PKG_CONFIG_PATH: 
+Called `/usr/bin/pkg-config --modversion csp` -> 1
+
+CMake binary for MachineChoice.HOST is not cached
+None of 'CMAKE' are defined in the environment, not changing global flags.
+CMake binary missing from cross or native file, or env var undefined.
+Trying a default CMake fallback at cmake
+Found CMake: /usr/bin/cmake (3.16.3)
+None of 'CMAKE_PREFIX_PATH' are defined in the environment, not changing global flags.
+Extracting basic cmake information
+Try CMake generator: auto
+Calling CMake (['/usr/bin/cmake']) in /home/pi/csh/lib/csp_ftp/builddir/meson-private/cmake_csp with:
+  - "--trace"
+  - "--trace-expand"
+  - "--no-warn-unused-cli"
+  - "--trace-redirect=cmake_trace.txt"
+  - "-DCMAKE_TOOLCHAIN_FILE=/home/pi/csh/lib/csp_ftp/builddir/meson-private/cmake_csp/CMakeMesonToolchainFile.cmake"
+  - "."
+  -- Module search paths:    ['/', '/opt', '/usr', '/usr/local']
+  -- CMake root:             /usr/share/cmake-3.16
+  -- CMake architectures:    ['arm-linux-gnueabihf']
+  -- CMake lib search paths: ['lib', 'lib32', 'lib64', 'libx32', 'share', 'lib/arm-linux-gnueabihf']
+Preliminary CMake check failed. Aborting.
+Run-time dependency csp found: NO (tried pkgconfig and cmake)
+Looking for a fallback subproject for the dependency csp
+
+meson.build:7:0: ERROR: Neither a subproject directory nor a csp.wrap file was found.

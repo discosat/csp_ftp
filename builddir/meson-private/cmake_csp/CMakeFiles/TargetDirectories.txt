@@ -1,0 +1,2 @@
+/home/pi/csh/lib/csp_ftp/builddir/meson-private/cmake_csp/CMakeFiles/rebuild_cache.dir
+/home/pi/csh/lib/csp_ftp/builddir/meson-private/cmake_csp/CMakeFiles/edit_cache.dir
