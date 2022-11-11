@@ -10,8 +10,10 @@
 
 #include <stdint.h>
 
-void ftp_download_file(int node, int timeout, const char * filename, int version, char * dataout, uint32_t dataout_size, uint32_t* recv_dataout_size);
-void ftp_upload_file(int node, int timeout, const char * filename, int version, char * datain, uint32_t length);
-// void ftp_client_list(int node, int timeout, int version);
+#define FTP_CLIENT_TIMEOUT 10000
+
+void ftp_download_file(int node, int timeout, const char * filename, int version, char** dataout, int* dataout_size);
+void ftp_upload_file(int node, int timeout, const char * filename, int version, char * datain, int datain_size);
+void ftp_list_files(int node, int timeout, const char * remote_directory, int version, char** filenames, int* file_count);
 
 #endif /* CSP_FTP_INCLUDE_FTP_CLIENT_H_ */

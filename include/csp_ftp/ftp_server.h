@@ -15,11 +15,15 @@
 #define FTP_PORT_SERVER 12
 #define FTP_VERSION 1
 
-#define MAX_PATH_LENGTH 100
+#define MAX_PATH_LENGTH 256
 
 typedef enum {
+	// Upload a file
 	FTP_SERVER_UPLOAD,
-	FTP_SERVER_DOWNLOAD
+	// Download a file
+	FTP_SERVER_DOWNLOAD,
+	// List files in directory
+	FTP_SERVER_LIST
 } ftp_request_type;
 
 // Header for any request to the server
@@ -47,6 +51,7 @@ typedef struct {
 void ftp_server_handler(csp_conn_t * conn);
 void handle_server_download(csp_conn_t * conn, ftp_request_t * request);
 void handle_server_upload(csp_conn_t * conn, ftp_request_t * request);
+void handle_server_list(csp_conn_t * conn, ftp_request_t * request);
 void ftp_server_loop(void * param);
 
 #endif /* LIB_CSP_FTP_FTP_INCLUDE_FTP_SERVER_H_ */
