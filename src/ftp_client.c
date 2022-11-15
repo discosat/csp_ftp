@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "csp_ftp/ftp_client.h"
-#include "csp_ftp/ftp_server.h"
+#include <csp_ftp/ftp_client.h>
+#include <csp_ftp/ftp_server.h>
 
 void ftp_download_file(int node, int timeout, const char * filename, int version, char** dataout, int* dataout_size)
 {
