@@ -16,8 +16,22 @@ typedef enum {
 	// Download a file
 	FTP_SERVER_DOWNLOAD,
 	// List files in directory
-	FTP_SERVER_LIST
+	FTP_SERVER_LIST,
+	FTP_PERFORMANCE_UPLOAD,
+	FTP_PERFORMANCE_DOWNLOAD,
 } ftp_request_type;
+
+typedef enum {
+	NORMAL,
+	SFP,
+} transport_protocole_t;
+
+typedef struct {
+	uint16_t n;
+	uint16_t chunk_size;
+	uint16_t mtu;
+	transport_protocole_t protocole;
+} perf_header_t;
 
 // Header for any request to the server
 typedef struct {
@@ -30,6 +44,7 @@ typedef struct {
             // Length of the path
             uint16_t length;
 		} v1;
+		perf_header_t perf_header;
 	};
 } __attribute__((packed)) ftp_request_t;
 

@@ -9,8 +9,8 @@
 #include <slash/optparse.h>
 #include <slash/dflopt.h>
 
-#include <csp_ftp/ftp_client.h>
 #include <csp_ftp/ftp_server.h>
+#include <csp_ftp/ftp_client.h>
 
 static int slash_csp_upload_file(struct slash *slash)
 {

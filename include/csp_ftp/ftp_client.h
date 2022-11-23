@@ -3,11 +3,12 @@
 
 #include <stdint.h>
 #include <csp/csp.h>
+#include <csp_ftp/ftp_server.h>
 
 #define FTP_CLIENT_TIMEOUT 10000
 
-// void send_v1_header(csp_conn_t* conn, ftp_request_type action, char* filename);
-// void send_ftp_request(csp_conn_t* conn, ftp_request_t* ftp_request);
+void send_ftp_request(csp_conn_t* conn, ftp_request_t* ftp_request);
+void send_v1_header(csp_conn_t* conn, ftp_request_type action, const char * filename);
 
 void ftp_download_file(int node, int timeout, const char * filename, int version, char** dataout, int* dataout_size);
 void ftp_upload_file(int node, int timeout, const char * filename, int version, char * datain, int datain_size);
