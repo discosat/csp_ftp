@@ -7,6 +7,35 @@
 #include <csp_ftp/ftp_client.h>
 #include <csp_ftp/ftp_server.h>
 
+void send_ftp_request(csp_conn_t* conn, ftp_request_t* ftp_request) {
+	csp_packet_t * packet = csp_buffer_get(sizeof(ftp_request_t));
+	if (packet == NULL)
+		return;
+
+	ftp_request_t * request = (void *) packet->data;
+	*request = *ftp_request;
+	request->v1.length = sizeof(ftp_request);
+
+	/* Send request */
+	csp_send(conn, packet);
+}
+
+void send_v1_header(csp_conn_t* conn, ftp_request_type action, const char * filename) {
+	ftp_request_t request;
+	request.version = 1;
+	request.type = FTP_SERVER_DOWNLOAD;
+
+	size_t filename_len = strlen(filename);
+	if( filename_len > MAX_PATH_LENGTH)
+        return;
+
+	strncpy(request.v1.address, filename, MAX_PATH_LENGTH);
+	// This will only fail if MAX_PATH_LENGTH > UINT16_MAX
+	request.v1.length = filename_len;
+
+	send_ftp_request(conn, &request);
+}
+
 void ftp_download_file(int node, int timeout, const char * filename, int version, char** dataout, int* dataout_size)
 {
 	*dataout = NULL;
@@ -19,25 +48,12 @@ void ftp_download_file(int node, int timeout, const char * filename, int version
 	if (conn == NULL)
 		return;
 
-	csp_packet_t * packet = csp_buffer_get(sizeof(ftp_request_t));
-	if (packet == NULL)
+	if (version == 1)
+		send_v1_header(conn, FTP_SERVER_DOWNLOAD, filename);
+	else {
+		printf("Client: Unknown header version %d\n", version);
 		return;
-
-	ftp_request_t * request = (void *) packet->data;
-	request->version = version;
-	request->type = FTP_SERVER_DOWNLOAD;
-	packet->length = sizeof(ftp_request_t);
-
-	size_t filename_len = strlen(filename);
-	if( filename_len > MAX_PATH_LENGTH)
-        return;
-
-	strncpy(request->v1.address, filename, MAX_PATH_LENGTH);
-	// This will only fail if MAX_PATH_LENGTH > UINT16_MAX
-	request->v1.length = filename_len;
-
-	/* Send request */
-	csp_send(conn, packet);
+	}
 
 	int err = csp_sfp_recv(conn, (void**) dataout, dataout_size, FTP_CLIENT_TIMEOUT);
 	if (err != CSP_ERR_NONE) {
@@ -62,26 +78,13 @@ void ftp_upload_file(int node, int timeout, const char * filename, int version, 
 	if (conn == NULL)
 		return;
 
-	csp_packet_t * packet = csp_buffer_get(sizeof(ftp_request_t));
-	if (packet == NULL)
+	if (version == 1)
+		send_v1_header(conn, FTP_SERVER_UPLOAD, filename);
+	else {
+		printf("Client: Unknown header version %d\n", version);
 		return;
+	}
 
-	ftp_request_t * request = (void *) packet->data;
-	request->version = version;
-	request->type = FTP_SERVER_UPLOAD;
-	packet->length = sizeof(ftp_request_t);
-
-	size_t filename_len = strlen(filename);
-	if( filename_len > MAX_PATH_LENGTH)
-        return;
-
-	strncpy(request->v1.address, filename, MAX_PATH_LENGTH);
-	// This will only fail if MAX_PATH_LENGTH > UINT16_MAX
-	request->v1.length = filename_len;
-
-	/* Send request */
-	csp_send(conn, packet);
-	
 	int err = csp_sfp_send(conn, datain, datain_size, FTP_SERVER_MTU, FTP_CLIENT_TIMEOUT);
 	if (err != CSP_ERR_NONE) {
 		printf("Client: Failed to send file with error %d\n", err);
@@ -91,7 +94,6 @@ void ftp_upload_file(int node, int timeout, const char * filename, int version, 
 	csp_close(conn);
 
 	uint32_t time_total = csp_get_ms() - time_begin;
-
 	printf("Client: Uploaded %u bytes in %.03f s at %u Bps\n", (unsigned int) datain_size, time_total / 1000.0, (unsigned int) (datain_size / ((float)time_total / 1000.0)) );
 
 }
@@ -110,21 +112,12 @@ void ftp_list_files(int node, int timeout, const char * remote_directory, int ve
 	if( remote_directory_len > MAX_PATH_LENGTH)
         return;
 
-	csp_packet_t * packet = csp_buffer_get(sizeof(ftp_request_t));
-	if (packet == NULL)
+	if (version == 1)
+		send_v1_header(conn, FTP_SERVER_LIST, remote_directory);
+	else {
+		printf("Client: Unknown header version %d\n", version);
 		return;
-
-	ftp_request_t * request = (void *) packet->data;
-	request->version = version;
-	request->type = FTP_SERVER_LIST;
-	packet->length = sizeof(ftp_request_t);
-
-	strncpy(request->v1.address, remote_directory, MAX_PATH_LENGTH);
-	// This will only fail if MAX_PATH_LENGTH > UINT16_MAX
-	request->v1.length = remote_directory_len;
-
-	/* Send request */
-	csp_send(conn, packet);
+	}
 
 	int *num_files = NULL;
 	int file_count_size;

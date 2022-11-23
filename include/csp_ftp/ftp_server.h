@@ -1,10 +1,3 @@
-/*
- * vmem_server.h
- *
- *  Created on: Oct 27, 2016
- *      Author: johan
- */
-
 #ifndef LIB_CSP_FTP_INCLUDE_FTP_SERVER_H_
 #define LIB_CSP_FTP_INCLUDE_FTP_SERVER_H_
 
