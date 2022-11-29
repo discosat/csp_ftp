@@ -81,7 +81,7 @@ static int slash_csp_download_file(struct slash *slash)
     unsigned int timeout = FTP_CLIENT_TIMEOUT;
     unsigned int node = slash_dfl_node;
 
-    optparse_t * parser = optparse_new("upload_file", "");
+    optparse_t * parser = optparse_new("download_files", "");
     optparse_add_help(parser);
     optparse_add_unsigned(parser, 'n', "node", "NUM", 0, &node, "node (default = <env>)");
     optparse_add_unsigned(parser, 't', "timout", "NUM", 0, &timeout, "timout for connection (default = FTP_CLIENT_TIMEOUT)");
@@ -137,7 +137,7 @@ static int slash_csp_list_file(struct slash *slash)
     unsigned int timeout = FTP_CLIENT_TIMEOUT;
     unsigned int node = slash_dfl_node;
 
-    optparse_t * parser = optparse_new("upload_file", "");
+    optparse_t * parser = optparse_new("list_files", "");
     optparse_add_help(parser);
     optparse_add_unsigned(parser, 'n', "node", "NUM", 0, &node, "node (default = <env>)");
     optparse_add_unsigned(parser, 't', "timout", "NUM", 0, &timeout, "timout for connection (default = FTP_CLIENT_TIMEOUT)");

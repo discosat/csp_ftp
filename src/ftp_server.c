@@ -39,13 +39,12 @@ void ftp_server_loop(void * param) {
 			continue;
         }
 
-        printf("Server: Recieved connection\n");
+        printf("Server: Recieved connection on %d\n", csp_conn_dport(conn));
 
 		/* Handle RDP service differently */
 		if (csp_conn_dport(conn) == FTP_PORT_SERVER) {
 			ftp_server_handler(conn);
 			csp_close(conn);
-			continue;
 		} else {
             printf("Server: Unrecognized connection type\n");
         }
@@ -61,8 +60,10 @@ void ftp_server_handler(csp_conn_t * conn)
 {
 	// Read request
 	csp_packet_t * packet = csp_read(conn, FTP_SERVER_TIMEOUT);
-	if (packet == NULL)
+	if (packet == NULL) {
+        printf("Server: Recieved no header\n");
 		return;
+    }
 
 	// Copy data from request
 	ftp_request_t * request = (void *) packet->data;
@@ -182,7 +183,7 @@ void handle_server_list(csp_conn_t * conn, ftp_request_t * request) {
 
         rewinddir(dirp);
 
-        size_t filenames_size = sizeof(char) * MAX_PATH_LENGTH * file_count;
+        size_t filenames_size = sizeof(char) * MAX_PATH_LENGTH * (file_count);
         char *filenames = malloc(filenames_size);
 
         printf("Server: getting files\n");
@@ -207,6 +208,8 @@ void handle_server_list(csp_conn_t * conn, ftp_request_t * request) {
             printf("Server: Failed to send filename with error %d\n", err);
             return;
         }
+
+        printf("Server: Finnished sending files\n");
 
         free(filenames);
 

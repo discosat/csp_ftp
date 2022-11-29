@@ -3,9 +3,9 @@
 
 #include <csp/csp.h>
 
-#define FTP_SERVER_TIMEOUT 30000
-#define FTP_SERVER_MTU 192
-#define FTP_PORT_SERVER 9
+#define FTP_SERVER_TIMEOUT 10000
+#define FTP_SERVER_MTU 200
+#define FTP_PORT_SERVER 13
 #define FTP_VERSION 1
 
 #define MAX_PATH_LENGTH 256

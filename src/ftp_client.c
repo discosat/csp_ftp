@@ -14,7 +14,7 @@ void send_ftp_request(csp_conn_t* conn, ftp_request_t* ftp_request) {
 
 	ftp_request_t * request = (void *) packet->data;
 	*request = *ftp_request;
-	request->v1.length = sizeof(ftp_request);
+	packet->length = sizeof(ftp_request_t);
 
 	/* Send request */
 	csp_send(conn, packet);
@@ -23,7 +23,7 @@ void send_ftp_request(csp_conn_t* conn, ftp_request_t* ftp_request) {
 void send_v1_header(csp_conn_t* conn, ftp_request_type action, const char * filename) {
 	ftp_request_t request;
 	request.version = 1;
-	request.type = FTP_SERVER_DOWNLOAD;
+	request.type = action;
 
 	size_t filename_len = strlen(filename);
 	if( filename_len > MAX_PATH_LENGTH)
@@ -100,10 +100,10 @@ void ftp_upload_file(int node, int timeout, const char * filename, int version, 
 
 void ftp_list_files(int node, int timeout, const char * remote_directory, int version, char** filenames, int* file_count)
 {
-	*filenames = NULL;
+	*filenames = "";
 	*file_count = 0;
 
-	/* Establish RDP connection */
+	// Establish RDP connection
 	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
 	if (conn == NULL)
 		return;
@@ -112,10 +112,12 @@ void ftp_list_files(int node, int timeout, const char * remote_directory, int ve
 	if( remote_directory_len > MAX_PATH_LENGTH)
         return;
 
-	if (version == 1)
+	if (version == 1) {
+		printf("Client: Sending header\n");
 		send_v1_header(conn, FTP_SERVER_LIST, remote_directory);
-	else {
+	} else {
 		printf("Client: Unknown header version %d\n", version);
+		csp_close(conn);
 		return;
 	}
 
@@ -125,12 +127,14 @@ void ftp_list_files(int node, int timeout, const char * remote_directory, int ve
 	int err = csp_sfp_recv(conn,(void**) &num_files, &file_count_size, FTP_CLIENT_TIMEOUT);
 	if (err != CSP_ERR_NONE) {
 		printf("Client: Failed to recieve number with error %d\n", err);
+		csp_close(conn);
 		return;
 	}
 
 	if (num_files == NULL || *num_files == 0) {
 		printf("Client: directory is empty\n");
 		free(num_files);
+		csp_close(conn);
 		return;
 	}
 
@@ -141,14 +145,16 @@ void ftp_list_files(int node, int timeout, const char * remote_directory, int ve
 	int filenames_size = 0;
 
 	err = csp_sfp_recv(conn, (void**) filenames, &filenames_size, FTP_CLIENT_TIMEOUT);
+	csp_close(conn);
+
 	if (err != CSP_ERR_NONE) {
+		*file_count = 0;
 		printf("Client: Failed to recieve filenames with error %d\n", err);
 		return;
 	}
-	
-	csp_close(conn);
 
 	if (filenames == NULL) {
+		*file_count = 0;
 		printf("Client: Failed to recieve filenames\n");
 		return;
 	}
