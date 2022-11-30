@@ -6,6 +6,7 @@ csp_ftp_src = files([
 	'src/ftp_server.c',
 	'src/ftp_perf.c',
 	'src/ftp_client.c',
+	'src/ftp_status.c',
 ])
 
 csp_ftp_inc = include_directories('include')

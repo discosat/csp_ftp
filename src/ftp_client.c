@@ -6,6 +6,7 @@
 
 #include <csp_ftp/ftp_client.h>
 #include <csp_ftp/ftp_server.h>
+#include <csp_ftp/ftp_status.h>
 
 void send_ftp_request(csp_conn_t* conn, ftp_request_t* ftp_request) {
 	csp_packet_t * packet = csp_buffer_get(sizeof(ftp_request_t));
@@ -16,7 +17,7 @@ void send_ftp_request(csp_conn_t* conn, ftp_request_t* ftp_request) {
 	*request = *ftp_request;
 	packet->length = sizeof(ftp_request_t);
 
-	/* Send request */
+	// Send request
 	csp_send(conn, packet);
 }
 
@@ -36,59 +37,78 @@ void send_v1_header(csp_conn_t* conn, ftp_request_type action, const char * file
 	send_ftp_request(conn, &request);
 }
 
-void ftp_download_file(int node, int timeout, const char * filename, int version, char** dataout, int* dataout_size)
+ftp_status_t ftp_download_file(int node, int timeout, const char * filename, char** dataout, int* dataout_size)
 {
 	*dataout = NULL;
 	*dataout_size = 0;
 
 	uint32_t time_begin = csp_get_ms();
 
-	/* Establish RDP connection */
+	// Establish connection
 	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
 	if (conn == NULL)
-		return;
+		return CLIENT_FAILURE;
 
-	if (version == 1)
-		send_v1_header(conn, FTP_SERVER_DOWNLOAD, filename);
-	else {
-		printf("Client: Unknown header version %d\n", version);
-		return;
+	// Send header file
+	send_v1_header(conn, FTP_SERVER_DOWNLOAD, filename);
+
+	// Check that the header was recieved propperly
+	ftp_status_t request_status = ftp_recieve_status(conn);
+	if (ftp_status_is_err(&request_status)) {
+		printf("Client: Request failed with error code %d\n", request_status);
+		csp_close(conn);
+		return request_status;
 	}
 
+	// Recieve content
 	int err = csp_sfp_recv(conn, (void**) dataout, dataout_size, FTP_CLIENT_TIMEOUT);
 	if (err != CSP_ERR_NONE) {
 		printf("Client: Failed to recieve file with error %d\n", err);
-		return;
+		csp_close(conn);
+		return CLIENT_FAILURE;
 	}
 
 	csp_close(conn);
 
 	uint32_t time_total = csp_get_ms() - time_begin;
-
 	printf("Client: Downloaded %u bytes in %.03f s at %u Bps\n", (unsigned int) *dataout_size, time_total / 1000.0, (unsigned int) (*dataout_size / ((float)time_total / 1000.0)) );
 
+	return OK;
 }
 
-void ftp_upload_file(int node, int timeout, const char * filename, int version, char * datain, int datain_size)
+ftp_status_t ftp_upload_file(int node, int timeout, const char * filename, char * datain, int datain_size)
 {
 	uint32_t time_begin = csp_get_ms();
 
-	/* Establish RDP connection */
+	// Establish connection
 	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
 	if (conn == NULL)
-		return;
+		return CLIENT_FAILURE;
 
-	if (version == 1)
-		send_v1_header(conn, FTP_SERVER_UPLOAD, filename);
-	else {
-		printf("Client: Unknown header version %d\n", version);
-		return;
+	// Send header file
+	send_v1_header(conn, FTP_SERVER_UPLOAD, filename);
+
+	// Check that header was recieved propperly
+	ftp_status_t header_status = ftp_recieve_status(conn);
+	if (ftp_status_is_err(&header_status)) {
+		printf("Client: Recieved error code %d after sending header\n", header_status);
+		csp_close(conn);
+		return header_status;
 	}
 
+	// Send content
 	int err = csp_sfp_send(conn, datain, datain_size, FTP_SERVER_MTU, FTP_CLIENT_TIMEOUT);
 	if (err != CSP_ERR_NONE) {
 		printf("Client: Failed to send file with error %d\n", err);
-		return;
+		return CLIENT_FAILURE;
+	}
+
+	// Check that body was send propperly
+	ftp_status_t body_status = ftp_recieve_status(conn);
+	if (ftp_status_is_err(&body_status)) {
+		printf("Client: Recieved error code %d after sending content\n", body_status);
+		csp_close(conn);
+		return body_status;
 	}
 
 	csp_close(conn);
@@ -96,71 +116,127 @@ void ftp_upload_file(int node, int timeout, const char * filename, int version, 
 	uint32_t time_total = csp_get_ms() - time_begin;
 	printf("Client: Uploaded %u bytes in %.03f s at %u Bps\n", (unsigned int) datain_size, time_total / 1000.0, (unsigned int) (datain_size / ((float)time_total / 1000.0)) );
 
+	return OK;
 }
 
-void ftp_list_files(int node, int timeout, const char * remote_directory, int version, char** filenames, int* file_count)
+ftp_status_t ftp_list_files(int node, int timeout, const char * remote_directory, char** filenames, int* file_count)
 {
 	*filenames = "";
 	*file_count = 0;
 
-	// Establish RDP connection
-	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
-	if (conn == NULL)
-		return;
-
+	// Validate remote path
 	size_t remote_directory_len = strlen(remote_directory);
 	if( remote_directory_len > MAX_PATH_LENGTH)
-        return;
+        return CLIENT_FAILURE;
 
-	if (version == 1) {
-		printf("Client: Sending header\n");
-		send_v1_header(conn, FTP_SERVER_LIST, remote_directory);
-	} else {
-		printf("Client: Unknown header version %d\n", version);
+	// Establish connection
+	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
+	if (conn == NULL)
+		return CLIENT_FAILURE;
+
+	// Send header file
+	send_v1_header(conn, FTP_SERVER_LIST, remote_directory);
+
+	// Check that header was recieved propperly
+	ftp_status_t header_status = ftp_recieve_status(conn);
+	if (ftp_status_is_err(&header_status)) {
+		printf("Client: Recieved error code %d after sending header\n", header_status);
 		csp_close(conn);
-		return;
+		return header_status;
 	}
 
+	// Recieve metadata bout files
 	int *num_files = NULL;
 	int file_count_size;
-
 	int err = csp_sfp_recv(conn,(void**) &num_files, &file_count_size, FTP_CLIENT_TIMEOUT);
 	if (err != CSP_ERR_NONE) {
 		printf("Client: Failed to recieve number with error %d\n", err);
 		csp_close(conn);
-		return;
+		return CLIENT_FAILURE;
 	}
 
+	// handle edge case where there is nothing in the directory
 	if (num_files == NULL || *num_files == 0) {
 		printf("Client: directory is empty\n");
 		free(num_files);
 		csp_close(conn);
-		return;
+		return CLIENT_FAILURE;
 	}
 
 	*file_count = *num_files;
 	free(num_files);
 
+	// Recieve list of files
 	size_t expected_filenames_size = sizeof(char) * MAX_PATH_LENGTH * *file_count;
 	int filenames_size = 0;
-
 	err = csp_sfp_recv(conn, (void**) filenames, &filenames_size, FTP_CLIENT_TIMEOUT);
 	csp_close(conn);
 
 	if (err != CSP_ERR_NONE) {
 		*file_count = 0;
 		printf("Client: Failed to recieve filenames with error %d\n", err);
-		return;
+		return CLIENT_FAILURE;
 	}
 
 	if (filenames == NULL) {
 		*file_count = 0;
 		printf("Client: Failed to recieve filenames\n");
-		return;
+		return CLIENT_FAILURE;
 	}
 
 	if (filenames_size != expected_filenames_size) {
 		printf("Client: recieved %d Bytes but expected %d", filenames_size, expected_filenames_size);
+		return CLIENT_FAILURE;
 	}
 
+	return OK;
+}
+
+ftp_status_t ftp_move_file(int node, int timeout, const char* source_file, const char* destination_file) {
+	size_t source_file_len = strlen(source_file);
+	if( source_file_len > MAX_PATH_LENGTH)
+        return CLIENT_FAILURE;
+
+	size_t destination_file_len = strlen(destination_file);
+	if( destination_file_len > MAX_PATH_LENGTH)
+        return CLIENT_FAILURE;
+
+	// Establish connection
+	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
+	if (conn == NULL)
+		return CLIENT_FAILURE;
+
+	// Send header file
+	send_v1_header(conn, FTP_MOVE, source_file);
+
+	int err = csp_sfp_send(conn, destination_file, destination_file_len, FTP_SERVER_MTU, FTP_CLIENT_TIMEOUT);
+	if (err != CSP_ERR_NONE) {
+		printf("Client: Failed to send with error code %d\n", err);
+		return CLIENT_FAILURE;
+	}
+
+	ftp_status_t status = ftp_recieve_status(conn);
+	if (ftp_status_is_err(&status)) {
+		printf("Client: Recieved error code %d after sending header\n", status);
+		csp_close(conn);
+		return status;
+	}
+
+	return OK;
+}
+
+ftp_status_t ftp_remove_file(int node, int timeout, const char* source_file) {
+	size_t source_file_len = strlen(source_file);
+	if( source_file_len > MAX_PATH_LENGTH)
+        return CLIENT_FAILURE;
+
+	// Establish connection
+	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
+	if (conn == NULL)
+		return CLIENT_FAILURE;
+
+	// Send header file
+	send_v1_header(conn, FTP_REMOVE, source_file);
+
+	return OK;
 }

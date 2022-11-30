@@ -63,7 +63,7 @@ static int slash_csp_upload_file(struct slash *slash)
     
     printf("Client: Uploading file of %ld bytes\n", file_size);
     //void ftp_upload_file(int node, int timeout, const char * filename, int version, char * datain, uint32_t length);
-    ftp_upload_file(node, timeout, remote_filename, 1, file_content, file_size);
+    ftp_upload_file(node, timeout, remote_filename, file_content, file_size);
     printf("Client: Transfer complete\n");
 
     /* free the memory we used for the buffer */
@@ -81,7 +81,7 @@ static int slash_csp_download_file(struct slash *slash)
     unsigned int timeout = FTP_CLIENT_TIMEOUT;
     unsigned int node = slash_dfl_node;
 
-    optparse_t * parser = optparse_new("download_files", "");
+    optparse_t * parser = optparse_new("download_file", "");
     optparse_add_help(parser);
     optparse_add_unsigned(parser, 'n', "node", "NUM", 0, &node, "node (default = <env>)");
     optparse_add_unsigned(parser, 't', "timout", "NUM", 0, &timeout, "timout for connection (default = FTP_CLIENT_TIMEOUT)");
@@ -109,7 +109,7 @@ static int slash_csp_download_file(struct slash *slash)
     char *file_content = NULL;
     int file_content_size = 0;
 
-    ftp_download_file(node, timeout, remote_filename, 1, &file_content, &file_content_size);
+    ftp_download_file(node, timeout, remote_filename, &file_content, &file_content_size);
     printf("Client: Transfer complete\n");
 
     if (file_content_size == 0) {
@@ -137,7 +137,7 @@ static int slash_csp_list_file(struct slash *slash)
     unsigned int timeout = FTP_CLIENT_TIMEOUT;
     unsigned int node = slash_dfl_node;
 
-    optparse_t * parser = optparse_new("list_files", "");
+    optparse_t * parser = optparse_new("list_file", "");
     optparse_add_help(parser);
     optparse_add_unsigned(parser, 'n', "node", "NUM", 0, &node, "node (default = <env>)");
     optparse_add_unsigned(parser, 't', "timout", "NUM", 0, &timeout, "timout for connection (default = FTP_CLIENT_TIMEOUT)");
@@ -158,7 +158,12 @@ static int slash_csp_list_file(struct slash *slash)
 
     char* filenames;
     int file_count;
-    ftp_list_files(node, timeout, remote_directory, 1, &filenames, &file_count);
+    ftp_status_t status = ftp_list_files(node, timeout, remote_directory, &filenames, &file_count);
+    if (ftp_status_is_err(&status)) {
+        printf("Client: Transfer failed with error %d\n", status);
+        return SLASH_EIO;
+    }
+
     printf("Client: Transfer complete\n");
 
 	printf("Client: Recieved %d files of size %d\n", file_count, file_count * MAX_PATH_LENGTH);
@@ -171,3 +176,86 @@ static int slash_csp_list_file(struct slash *slash)
 }
 
 slash_command(list_file, slash_csp_list_file, NULL, "List all files in directory");
+
+static int slash_csp_move(struct slash *slash)
+{
+    char* source_address = "";
+    char* destination_address = "";
+    unsigned int timeout = FTP_CLIENT_TIMEOUT;
+    unsigned int node = slash_dfl_node;
+
+    optparse_t * parser = optparse_new("move_file", "");
+    optparse_add_help(parser);
+    optparse_add_unsigned(parser, 'n', "node", "NUM", 0, &node, "node (default = <env>)");
+    optparse_add_unsigned(parser, 't', "timout", "NUM", 0, &timeout, "timout for connection (default = FTP_CLIENT_TIMEOUT)");
+    optparse_add_string(parser, 's', "source", "FILE", &source_address, "remote source file");
+    optparse_add_string(parser, 'd', "destination", "FILE", &destination_address, "remote destination file");
+
+    int argi = optparse_parse(parser, slash->argc - 1, (const char **) slash->argv + 1);
+    if (argi < 0) {
+        optparse_del(parser);
+	    return SLASH_EINVAL;
+    }
+
+    if (strlen(source_address) == 0) {
+        printf("Source file path cannot be empty\n");
+        return SLASH_EINVAL;
+    }
+
+    if (strlen(destination_address) == 0) {
+        printf("Destination file path cannot be empty\n");
+        return SLASH_EINVAL;
+    }
+    
+    printf("Client: Move file\n");
+
+    ftp_status_t status = ftp_move_file(node, timeout, source_address, destination_address);
+    if (ftp_status_is_err(&status)) {
+        printf("Client: Move failed with error %d\n", status);
+        return SLASH_EIO;
+    }
+
+    printf("Client: Move complete\n");
+
+	return SLASH_SUCCESS;
+}
+
+slash_command(move_file, slash_csp_move, NULL, "Move a file");
+
+static int slash_csp_remove(struct slash *slash)
+{
+    char* source_address = "";
+    unsigned int timeout = FTP_CLIENT_TIMEOUT;
+    unsigned int node = slash_dfl_node;
+
+    optparse_t * parser = optparse_new("remove_file", "");
+    optparse_add_help(parser);
+    optparse_add_unsigned(parser, 'n', "node", "NUM", 0, &node, "node (default = <env>)");
+    optparse_add_unsigned(parser, 't', "timout", "NUM", 0, &timeout, "timout for connection (default = FTP_CLIENT_TIMEOUT)");
+    optparse_add_string(parser, 's', "source", "FILE", &source_address, "remote file to remove");
+
+    int argi = optparse_parse(parser, slash->argc - 1, (const char **) slash->argv + 1);
+    if (argi < 0) {
+        optparse_del(parser);
+	    return SLASH_EINVAL;
+    }
+
+    if (strlen(source_address) == 0) {
+        printf("Source file path cannot be empty\n");
+        return SLASH_EINVAL;
+    }
+
+    printf("Client: Remove file\n");
+
+    ftp_status_t status = ftp_remove_file(node, timeout, source_address);
+    if (ftp_status_is_err(&status)) {
+        printf("Client: Removal failed with error %d\n", status);
+        return SLASH_EIO;
+    }
+
+    printf("Client: Removal Complete\n");
+
+	return SLASH_SUCCESS;
+}
+
+slash_command(remove_file, slash_csp_remove, NULL, "Remove a file");
