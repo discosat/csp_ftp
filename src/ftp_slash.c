@@ -11,6 +11,7 @@
 
 #include <csp_ftp/ftp_server.h>
 #include <csp_ftp/ftp_client.h>
+#include <csp_ftp/ftp_perf.h>
 
 static int slash_csp_upload_file(struct slash *slash)
 {
@@ -259,3 +260,115 @@ static int slash_csp_remove(struct slash *slash)
 }
 
 slash_command(remove_file, slash_csp_remove, NULL, "Remove a file");
+
+
+static int slash_csp_perf_upload(struct slash *slash) {
+    unsigned int timeout = FTP_CLIENT_TIMEOUT;
+    unsigned int node = slash_dfl_node;
+    perf_header_t header;
+    header.chunk_size = 10;
+    header.mtu = FTP_SERVER_MTU;
+    header.n = 10;
+    header.protocole = NORMAL;
+
+    unsigned int chunk_size = 10;
+    unsigned int mtu = FTP_SERVER_MTU;
+    unsigned int n = 10;
+    unsigned int protocole = NORMAL;
+
+    optparse_t * parser = optparse_new("perf_upload", "");
+    optparse_add_help(parser);
+    optparse_add_unsigned(parser, 'n', "node", "NUM", 0, &node, "node (default = <env>)");
+    optparse_add_unsigned(parser, 't', "timout", "NUM", 0, &timeout, "timout for connection (default = FTP_CLIENT_TIMEOUT)");
+    optparse_add_unsigned(parser, 'c', "count", "NUM", 0,  &n, "Number of packages to send");
+    optparse_add_unsigned(parser, 's', "size", "NUM", 0, &chunk_size, "Size of each package");
+    optparse_add_unsigned(parser, 'm', "mtu", "NUM", 0, &mtu, "Minimum transfer unit");
+    optparse_add_unsigned(parser, 'p', "protocole", "NUM", 0, &protocole, "protocole either normal (0) or sfp (1)");
+
+    int argi = optparse_parse(parser, slash->argc - 1, (const char **) slash->argv + 1);
+    if (argi < 0) {
+        optparse_del(parser);
+	    return SLASH_EINVAL;
+    }
+
+    header.chunk_size = chunk_size;
+    header.mtu = mtu;
+    header.n = n;
+    header.protocole = protocole;
+
+    printf("Client: Upload test (size = %d, n = %d, mtu = %d, protocole = %d)\n", header.chunk_size, header.n, header.mtu, header.protocole);
+
+    csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
+	if (conn == NULL)
+		return CLIENT_FAILURE;
+
+    ftp_request_t request;
+	request.version = 1;
+	request.type = FTP_PERFORMANCE_DOWNLOAD;
+    request.perf_header = header;
+	send_ftp_request(conn, &request);
+
+    perf_upload(conn, &header);
+
+    printf("Client: Upload test done\n");
+    return SLASH_SUCCESS;
+}
+
+slash_command(perf_upload, slash_csp_perf_upload, NULL, "Upload a varying amount of data");
+
+
+static int slash_csp_perf_download(struct slash *slash) {
+    unsigned int timeout = FTP_CLIENT_TIMEOUT;
+    unsigned int node = slash_dfl_node;
+    perf_header_t header;
+    header.chunk_size = 10;
+    header.mtu = FTP_SERVER_MTU;
+    header.n = 10;
+    header.protocole = NORMAL;
+
+    unsigned int chunk_size = 10;
+    unsigned int mtu = FTP_SERVER_MTU;
+    unsigned int n = 10;
+    unsigned int protocole = NORMAL;
+
+    optparse_t * parser = optparse_new("perf_download", "");
+    optparse_add_help(parser);
+    optparse_add_unsigned(parser, 'n', "node", "NUM", 0, &node, "node (default = <env>)");
+    optparse_add_unsigned(parser, 't', "timout", "NUM", 0, &timeout, "timout for connection (default = FTP_CLIENT_TIMEOUT)");
+
+    optparse_add_unsigned(parser, 'c', "count", "NUM", 0,  &n, "Number of packages to send");
+    optparse_add_unsigned(parser, 's', "size", "NUM", 0, &chunk_size, "Size of each package");
+    optparse_add_unsigned(parser, 'm', "mtu", "NUM", 0, &mtu, "Minimum transfer unit");
+    optparse_add_unsigned(parser, 'p', "protocole", "NUM", 0, &protocole, "protocole either normal (0) or sfp (1)");
+
+    int argi = optparse_parse(parser, slash->argc - 1, (const char **) slash->argv + 1);
+    if (argi < 0) {
+        optparse_del(parser);
+	    return SLASH_EINVAL;
+    }
+    
+    header.chunk_size = chunk_size;
+    header.mtu = mtu;
+    header.n = n;
+    header.protocole = protocole;
+
+    printf("Client: Download test (size = %d, n = %d, mtu = %d, protocole = %d)\n", header.chunk_size, header.n, header.mtu, header.protocole);
+
+    csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
+	if (conn == NULL)
+		return CLIENT_FAILURE;
+
+    ftp_request_t request;
+	request.version = 1;
+	request.type = FTP_PERFORMANCE_UPLOAD;
+    request.perf_header = header;
+	send_ftp_request(conn, &request);
+
+    perf_download(conn, &header);
+
+    printf("Client: Download test done\n");
+
+    return SLASH_SUCCESS;
+}
+
+slash_command(perf_download, slash_csp_perf_download, NULL, "Download a varying amount of data");

@@ -24,8 +24,8 @@ typedef enum {
 } ftp_request_type;
 
 typedef enum {
-	NORMAL,
-	SFP,
+	NORMAL = 0,
+	SFP = 1,
 } transport_protocole_t;
 
 typedef struct {

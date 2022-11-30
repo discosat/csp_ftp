@@ -88,10 +88,10 @@ void ftp_server_handler(csp_conn_t * conn)
 		handle_server_remove(conn, request);
     } else if (request->type == FTP_PERFORMANCE_UPLOAD) {
         printf("Server: Handling performance upload request\n");
-		perf_upload(conn, request);
+		perf_upload(conn, &request->perf_header);
     } else if (request->type == FTP_PERFORMANCE_DOWNLOAD) {
         printf("Server: Handling performance download request\n");
-		perf_download(conn, request);
+		perf_download(conn, &request->perf_header);
     } else {
         printf("Server: Unknown request\n");
 	}

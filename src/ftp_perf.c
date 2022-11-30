@@ -14,8 +14,7 @@
 #include <csp_ftp/ftp_server.h>
 #include <csp_ftp/ftp_perf.h>
 
-void perf_download(csp_conn_t * conn, ftp_request_t * request) {
-    perf_header_t* header = &request->perf_header;
+void perf_download(csp_conn_t * conn, perf_header_t* header) {
     uint32_t t0 = csp_get_ms();
 
     int bytes_recieved = 0;
@@ -52,8 +51,7 @@ void perf_download(csp_conn_t * conn, ftp_request_t * request) {
     printf("Received %d Bytes in %d ms\n", bytes_recieved, t1 - t0);
 }
 
-void perf_upload(csp_conn_t * conn, ftp_request_t * request) {
-    perf_header_t* header = &request->perf_header;
+void perf_upload(csp_conn_t * conn, perf_header_t* header) {
     uint32_t t0 = csp_get_ms();
 
     int bytes_recieved = 0;
