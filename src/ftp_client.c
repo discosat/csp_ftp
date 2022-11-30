@@ -27,27 +27,24 @@ void send_v1_header(csp_conn_t* conn, ftp_request_type action, const char * file
 	request.type = action;
 
 	size_t filename_len = strlen(filename);
-	if( filename_len > MAX_PATH_LENGTH)
+	if( filename_len > MAX_PATH_LENGTH) {
+		printf("Client: Exceeded characher limit of %u with path of %d charactes for path %s", MAX_PATH_LENGTH, filename_len, filename);
         return;
+	}
 
-	strncpy(request.v1.address, filename, MAX_PATH_LENGTH);
+	strncpy(request.v1.address, filename, filename_len);
 	// This will only fail if MAX_PATH_LENGTH > UINT16_MAX
 	request.v1.length = filename_len;
 
 	send_ftp_request(conn, &request);
 }
 
-ftp_status_t ftp_download_file(int node, int timeout, const char * filename, char** dataout, int* dataout_size)
+ftp_status_t ftp_download_file(csp_conn_t* conn, int timeout, const char * filename, char** dataout, int* dataout_size)
 {
 	*dataout = NULL;
 	*dataout_size = 0;
 
 	uint32_t time_begin = csp_get_ms();
-
-	// Establish connection
-	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
-	if (conn == NULL)
-		return CLIENT_FAILURE;
 
 	// Send header file
 	send_v1_header(conn, FTP_SERVER_DOWNLOAD, filename);
@@ -76,14 +73,9 @@ ftp_status_t ftp_download_file(int node, int timeout, const char * filename, cha
 	return OK;
 }
 
-ftp_status_t ftp_upload_file(int node, int timeout, const char * filename, char * datain, int datain_size)
+ftp_status_t ftp_upload_file(csp_conn_t* conn, int timeout, const char * filename, char * datain, int datain_size)
 {
 	uint32_t time_begin = csp_get_ms();
-
-	// Establish connection
-	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
-	if (conn == NULL)
-		return CLIENT_FAILURE;
 
 	// Send header file
 	send_v1_header(conn, FTP_SERVER_UPLOAD, filename);
@@ -119,20 +111,17 @@ ftp_status_t ftp_upload_file(int node, int timeout, const char * filename, char 
 	return OK;
 }
 
-ftp_status_t ftp_list_files(int node, int timeout, const char * remote_directory, char** filenames, int* file_count)
+ftp_status_t ftp_list_files(csp_conn_t* conn, int timeout, const char * remote_directory, char** filenames, int* file_count)
 {
 	*filenames = "";
 	*file_count = 0;
 
 	// Validate remote path
 	size_t remote_directory_len = strlen(remote_directory);
-	if( remote_directory_len > MAX_PATH_LENGTH)
+	if( remote_directory_len > MAX_PATH_LENGTH) {
+		printf("Client: Exceeded characher limit of %u with path of %d charactes for path %s", MAX_PATH_LENGTH, remote_directory_len, remote_directory);
         return CLIENT_FAILURE;
-
-	// Establish connection
-	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
-	if (conn == NULL)
-		return CLIENT_FAILURE;
+	}
 
 	// Send header file
 	send_v1_header(conn, FTP_SERVER_LIST, remote_directory);
@@ -192,19 +181,18 @@ ftp_status_t ftp_list_files(int node, int timeout, const char * remote_directory
 	return OK;
 }
 
-ftp_status_t ftp_move_file(int node, int timeout, const char* source_file, const char* destination_file) {
+ftp_status_t ftp_move_file(csp_conn_t* conn, int timeout, const char* source_file, const char* destination_file) {
 	size_t source_file_len = strlen(source_file);
-	if( source_file_len > MAX_PATH_LENGTH)
+	if( source_file_len > MAX_PATH_LENGTH) {
+		printf("Client: Exceeded characher limit of %u with path of %d charactes for path %s", MAX_PATH_LENGTH, source_file_len, source_file);
         return CLIENT_FAILURE;
+	}
 
 	size_t destination_file_len = strlen(destination_file);
-	if( destination_file_len > MAX_PATH_LENGTH)
+	if( destination_file_len > MAX_PATH_LENGTH) {
+		printf("Client: Exceeded characher limit of %u with path of %d charactes for path %s", MAX_PATH_LENGTH, destination_file_len, destination_file);
         return CLIENT_FAILURE;
-
-	// Establish connection
-	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
-	if (conn == NULL)
-		return CLIENT_FAILURE;
+	}
 
 	// Send header file
 	send_v1_header(conn, FTP_MOVE, source_file);
@@ -225,15 +213,10 @@ ftp_status_t ftp_move_file(int node, int timeout, const char* source_file, const
 	return OK;
 }
 
-ftp_status_t ftp_remove_file(int node, int timeout, const char* source_file) {
+ftp_status_t ftp_remove_file(csp_conn_t* conn, int timeout, const char* source_file) {
 	size_t source_file_len = strlen(source_file);
 	if( source_file_len > MAX_PATH_LENGTH)
         return CLIENT_FAILURE;
-
-	// Establish connection
-	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
-	if (conn == NULL)
-		return CLIENT_FAILURE;
 
 	// Send header file
 	send_v1_header(conn, FTP_REMOVE, source_file);

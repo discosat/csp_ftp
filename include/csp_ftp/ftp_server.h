@@ -20,7 +20,7 @@ typedef enum {
 	FTP_MOVE,
 	FTP_REMOVE,
 	FTP_PERFORMANCE_UPLOAD,
-	FTP_PERFORMANCE_DOWNLOAD,
+	FTP_PERFORMANCE_DOWNLOAD
 } ftp_request_type;
 
 typedef enum {
@@ -58,7 +58,7 @@ typedef struct {
 	char name[5];
 } __attribute__((packed)) ftp_list_t;
 
-void ftp_server_handler(csp_conn_t * conn);
+bool ftp_server_handler(csp_conn_t * conn);
 void handle_server_download(csp_conn_t * conn, ftp_request_t * request);
 void handle_server_upload(csp_conn_t * conn, ftp_request_t * request);
 void handle_server_list(csp_conn_t * conn, ftp_request_t * request);

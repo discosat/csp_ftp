@@ -1,5 +1,7 @@
+#define _XOPEN_SOURCE 500
 #include <stdio.h>
 #include <dirent.h>
+#include <ftw.h>
 #include <stdlib.h>
 #include <csp/csp.h>
 #include <sys/types.h>
@@ -38,7 +40,11 @@ void ftp_server_loop(void * param) {
 
 		/* Handle RDP service differently */
 		if (csp_conn_dport(conn) == FTP_PORT_SERVER) {
-			ftp_server_handler(conn);
+            bool should_continue = true;
+            do {
+                should_continue = ftp_server_handler(conn);
+            } while (should_continue == true);
+			
 			csp_close(conn);
 		} else {
             printf("Server: Unrecognized connection type\n");
@@ -51,13 +57,13 @@ void ftp_server_loop(void * param) {
 
 }
 
-void ftp_server_handler(csp_conn_t * conn)
+bool ftp_server_handler(csp_conn_t * conn)
 {
 	// Read request
 	csp_packet_t * packet = csp_read(conn, FTP_SERVER_TIMEOUT);
 	if (packet == NULL) {
-        printf("Server: Recieved no header\n");
-		return;
+        printf("Server: Recieved no further requests\n");
+		return false;
     }
 
 	// Copy data from request
@@ -66,7 +72,8 @@ void ftp_server_handler(csp_conn_t * conn)
     // The request is not of an accepted type
     if (request->version > FTP_VERSION) {
         printf("Server: Unknown version\n");
-        return;
+        csp_buffer_free(packet);
+        return false;
     }
 
 	int type = request->type;
@@ -97,7 +104,8 @@ void ftp_server_handler(csp_conn_t * conn)
 	}
 
     csp_buffer_free(packet);
-    
+
+    return true;
 }
 
 ftp_status_t mkdirs(char* address) {
@@ -335,9 +343,30 @@ void handle_server_move(csp_conn_t * conn, ftp_request_t * request) {
     }
 }
 
+
+int unlink_cb(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf) {
+    int rv = remove(fpath);
+
+    if (rv)
+        perror(fpath);
+
+    return rv;
+}
+
+int rmrf(char *path) {
+    return nftw(path, unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
+}
+
 void handle_server_remove(csp_conn_t * conn, ftp_request_t * request) {
     char * address = request->v1.address;
-    int err = remove(address);
+    int err = 0;
+
+    if (is_directory(address)) {
+        err = rmrf(address);
+    } else {
+        err = remove(address);
+    }
+    
     if (err == -1) {
         printf("Server: Failed to remove file\n");
         ftp_send_status(conn, IO_ERROR);

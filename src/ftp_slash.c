@@ -63,12 +63,21 @@ static int slash_csp_upload_file(struct slash *slash)
     fclose(f);
     
     printf("Client: Uploading file of %ld bytes\n", file_size);
+
+    csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
+	if (conn == NULL) {
+        printf("Client: Failed to connect to server\n");
+		return SLASH_EINVAL;
+    }
+
     //void ftp_upload_file(int node, int timeout, const char * filename, int version, char * datain, uint32_t length);
-    ftp_upload_file(node, timeout, remote_filename, file_content, file_size);
+    ftp_upload_file(conn, timeout, remote_filename, file_content, file_size);
     printf("Client: Transfer complete\n");
 
     /* free the memory we used for the buffer */
     free(file_content);
+
+    csp_close(conn);
 
 	return SLASH_SUCCESS;
 }
@@ -107,14 +116,22 @@ static int slash_csp_download_file(struct slash *slash)
     }
 
     printf("Client: Downloading file\n");
+
+    // Establish connection
+	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
+	if (conn == NULL) {
+        printf("Client: Failed to connect to server\n");
+		return SLASH_EINVAL;
+    }
+
     char *file_content = NULL;
     int file_content_size = 0;
-
-    ftp_download_file(node, timeout, remote_filename, &file_content, &file_content_size);
+    ftp_download_file(conn, timeout, remote_filename, &file_content, &file_content_size);
     printf("Client: Transfer complete\n");
 
     if (file_content_size == 0) {
         printf("Client Recieved empty file\n");
+        csp_close(conn);
         return SLASH_SUCCESS;
     }
 
@@ -125,6 +142,8 @@ static int slash_csp_download_file(struct slash *slash)
     printf("Client Saved file to %s\n", local_filename);
 
     free(file_content);
+
+    csp_close(conn);
 
 	return SLASH_SUCCESS;
 }
@@ -157,13 +176,23 @@ static int slash_csp_list_file(struct slash *slash)
     
     printf("Client: List file\n");
 
+    // Establish connection
+	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
+	if (conn == NULL) {
+        printf("Client: Failed to connect to server\n");
+		return SLASH_EINVAL;
+    }
+
     char* filenames;
     int file_count;
-    ftp_status_t status = ftp_list_files(node, timeout, remote_directory, &filenames, &file_count);
+    ftp_status_t status = ftp_list_files(conn, timeout, remote_directory, &filenames, &file_count);
     if (ftp_status_is_err(&status)) {
         printf("Client: Transfer failed with error %d\n", status);
+        csp_close(conn);
         return SLASH_EIO;
     }
+
+    csp_close(conn);
 
     printf("Client: Transfer complete\n");
 
@@ -210,13 +239,23 @@ static int slash_csp_move(struct slash *slash)
     
     printf("Client: Move file\n");
 
-    ftp_status_t status = ftp_move_file(node, timeout, source_address, destination_address);
+    // Establish connection
+	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
+	if (conn == NULL) {
+        printf("Client: Failed to connect to server\n");
+		return SLASH_EINVAL;
+    }
+
+    ftp_status_t status = ftp_move_file(conn, timeout, source_address, destination_address);
     if (ftp_status_is_err(&status)) {
         printf("Client: Move failed with error %d\n", status);
+        csp_close(conn);
         return SLASH_EIO;
     }
 
     printf("Client: Move complete\n");
+
+    csp_close(conn);
 
 	return SLASH_SUCCESS;
 }
@@ -248,14 +287,23 @@ static int slash_csp_remove(struct slash *slash)
 
     printf("Client: Remove file\n");
 
-    ftp_status_t status = ftp_remove_file(node, timeout, source_address);
+    // Establish connection
+	csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
+	if (conn == NULL) {
+        printf("Client: Failed to connect to server\n");
+		return SLASH_EINVAL;
+    }
+
+    ftp_status_t status = ftp_remove_file(conn, timeout, source_address);
     if (ftp_status_is_err(&status)) {
         printf("Client: Removal failed with error %d\n", status);
+        csp_close(conn);
         return SLASH_EIO;
     }
 
     printf("Client: Removal Complete\n");
 
+    csp_close(conn);
 	return SLASH_SUCCESS;
 }
 
@@ -299,8 +347,10 @@ static int slash_csp_perf_upload(struct slash *slash) {
     printf("Client: Upload test (size = %d, n = %d, mtu = %d, protocole = %d)\n", header.chunk_size, header.n, header.mtu, header.protocole);
 
     csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
-	if (conn == NULL)
+	if (conn == NULL) {
+        printf("Client: Failed to connect to server\n");
 		return CLIENT_FAILURE;
+    }
 
     ftp_request_t request;
 	request.version = 1;
@@ -311,11 +361,13 @@ static int slash_csp_perf_upload(struct slash *slash) {
     perf_upload(conn, &header);
 
     printf("Client: Upload test done\n");
+
+    csp_close(conn);
+
     return SLASH_SUCCESS;
 }
 
 slash_command(perf_upload, slash_csp_perf_upload, NULL, "Upload a varying amount of data");
-
 
 static int slash_csp_perf_download(struct slash *slash) {
     unsigned int timeout = FTP_CLIENT_TIMEOUT;
@@ -355,8 +407,10 @@ static int slash_csp_perf_download(struct slash *slash) {
     printf("Client: Download test (size = %d, n = %d, mtu = %d, protocole = %d)\n", header.chunk_size, header.n, header.mtu, header.protocole);
 
     csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
-	if (conn == NULL)
+	if (conn == NULL) {
+        printf("Client: Failed to connect to server\n");
 		return CLIENT_FAILURE;
+    }
 
     ftp_request_t request;
 	request.version = 1;
@@ -367,6 +421,8 @@ static int slash_csp_perf_download(struct slash *slash) {
     perf_download(conn, &header);
 
     printf("Client: Download test done\n");
+
+    csp_close(conn);
 
     return SLASH_SUCCESS;
 }
