@@ -323,15 +323,18 @@ static int slash_csp_perf_upload(struct slash *slash) {
     unsigned int mtu = FTP_SERVER_MTU;
     unsigned int n = 10;
     unsigned int protocole = NORMAL;
+    char* config = NULL;
 
     optparse_t * parser = optparse_new("perf_upload", "");
     optparse_add_help(parser);
     optparse_add_unsigned(parser, 'n', "node", "NUM", 0, &node, "node (default = <env>)");
     optparse_add_unsigned(parser, 't', "timout", "NUM", 0, &timeout, "timout for connection (default = FTP_CLIENT_TIMEOUT)");
+
     optparse_add_unsigned(parser, 'c', "count", "NUM", 0,  &n, "Number of packages to send");
     optparse_add_unsigned(parser, 's', "size", "NUM", 0, &chunk_size, "Size of each package");
     optparse_add_unsigned(parser, 'm', "mtu", "NUM", 0, &mtu, "Minimum transfer unit");
-    optparse_add_unsigned(parser, 'p', "protocole", "NUM", 0, &protocole, "protocole either normal (0) or sfp (1)");
+    optparse_add_unsigned(parser, 'p', "protocole", "NUM", 0, &protocole, "Protocole either normal (0) or sfp (1)");
+    optparse_add_string(parser, 'f', "file", "FILE", &config, "Path to configuration file");
 
     int argi = optparse_parse(parser, slash->argc - 1, (const char **) slash->argv + 1);
     if (argi < 0) {
@@ -339,27 +342,92 @@ static int slash_csp_perf_upload(struct slash *slash) {
 	    return SLASH_EINVAL;
     }
 
-    header.chunk_size = chunk_size;
-    header.mtu = mtu;
-    header.n = n;
-    header.protocole = protocole;
-
-    printf("Client: Upload test (size = %d, n = %d, mtu = %d, protocole = %d)\n", header.chunk_size, header.n, header.mtu, header.protocole);
-
     csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
 	if (conn == NULL) {
         printf("Client: Failed to connect to server\n");
 		return CLIENT_FAILURE;
     }
 
-    ftp_request_t request;
-	request.version = 1;
-	request.type = FTP_PERFORMANCE_DOWNLOAD;
-    request.perf_header = header;
-	send_ftp_request(conn, &request);
+    if (config != NULL) {
+        printf("Client: Running using config file at %s", config);
+        FILE* fp = fopen(config, "r");
+        if (fp == NULL) {
+            printf("Client: Failed to open config file\n");
+            return SLASH_EINVAL;
+        }
 
-    perf_upload(conn, &header);
+        char * line = NULL;
+        size_t len = 0;
+        ssize_t read;
 
+        // Read each line as a seperate test
+        while ((read = getline(&line, &len, fp)) != -1) {
+            // Set default values
+            header.chunk_size = chunk_size;
+            header.mtu = mtu;
+            header.n = n;
+            header.protocole = protocole;
+
+            int i0 = 0;
+            int i1 = 0;
+
+            int param_i = 0;
+            // Parse a space seperated list of parameters
+            // The order of parameters is used to determing what it is used for
+            while (i1 <= read)  {
+                if ((line[i1] == ' ' || line[i1] == '\n' || i1 == read) && i1 - i0 > 0) {
+                    char* sub_string = calloc(1, i1 - i0);
+                    memcpy(sub_string, &line[i0], i1 - i0);
+
+                    i0 = i1;
+                    int param = atoi(sub_string);
+                    free(sub_string);
+
+                    if (param_i == 0) {
+                        header.n = param;
+                    } else if (param_i == 1) {
+                        header.chunk_size = param;
+                    } else if (param_i == 2) {
+                        header.mtu = param;
+                    } else if (param_i == 3) {
+                        header.protocole = param;
+                    }
+
+                    param_i += 1;
+                }
+                i1 += 1;
+            }
+
+            // Run test
+            printf("Client: Upload test (size = %d, n = %d, mtu = %d, protocole = %d)\n", header.chunk_size, header.n, header.mtu, header.protocole);
+
+            ftp_request_t request;
+            request.version = 1;
+            request.type = FTP_PERFORMANCE_UPLOAD;
+            request.perf_header = header;
+            send_ftp_request(conn, &request);
+
+            perf_upload(conn, &header);
+        }
+
+        fclose(fp);
+    } else {
+        printf("Client: Upload test (size = %d, n = %d, mtu = %d, protocole = %d)\n", header.chunk_size, header.n, header.mtu, header.protocole);
+
+        header.chunk_size = chunk_size;
+        header.mtu = mtu;
+        header.n = n;
+        header.protocole = protocole;
+
+        ftp_request_t request;
+        request.version = 1;
+        request.type = FTP_PERFORMANCE_DOWNLOAD;
+        request.perf_header = header;
+        send_ftp_request(conn, &request);
+
+        perf_upload(conn, &header);
+    }
+    
     printf("Client: Upload test done\n");
 
     csp_close(conn);
@@ -382,6 +450,7 @@ static int slash_csp_perf_download(struct slash *slash) {
     unsigned int mtu = FTP_SERVER_MTU;
     unsigned int n = 10;
     unsigned int protocole = NORMAL;
+    char* config = NULL;
 
     optparse_t * parser = optparse_new("perf_download", "");
     optparse_add_help(parser);
@@ -391,20 +460,14 @@ static int slash_csp_perf_download(struct slash *slash) {
     optparse_add_unsigned(parser, 'c', "count", "NUM", 0,  &n, "Number of packages to send");
     optparse_add_unsigned(parser, 's', "size", "NUM", 0, &chunk_size, "Size of each package");
     optparse_add_unsigned(parser, 'm', "mtu", "NUM", 0, &mtu, "Minimum transfer unit");
-    optparse_add_unsigned(parser, 'p', "protocole", "NUM", 0, &protocole, "protocole either normal (0) or sfp (1)");
+    optparse_add_unsigned(parser, 'p', "protocole", "NUM", 0, &protocole, "Protocole either normal (0) or sfp (1)");
+    optparse_add_string(parser, 'f', "file", "FILE", &config, "Path to configuration file");
 
     int argi = optparse_parse(parser, slash->argc - 1, (const char **) slash->argv + 1);
     if (argi < 0) {
         optparse_del(parser);
 	    return SLASH_EINVAL;
     }
-    
-    header.chunk_size = chunk_size;
-    header.mtu = mtu;
-    header.n = n;
-    header.protocole = protocole;
-
-    printf("Client: Download test (size = %d, n = %d, mtu = %d, protocole = %d)\n", header.chunk_size, header.n, header.mtu, header.protocole);
 
     csp_conn_t * conn = csp_connect(CSP_PRIO_HIGH, node, FTP_PORT_SERVER, timeout, CSP_O_RDP | CSP_O_CRC32);
 	if (conn == NULL) {
@@ -412,14 +475,86 @@ static int slash_csp_perf_download(struct slash *slash) {
 		return CLIENT_FAILURE;
     }
 
-    ftp_request_t request;
-	request.version = 1;
-	request.type = FTP_PERFORMANCE_UPLOAD;
-    request.perf_header = header;
-	send_ftp_request(conn, &request);
+    if (config != NULL) {
+        printf("Client: Running using config file at %s", config);
+        FILE* fp = fopen(config, "r");
+        if (fp == NULL) {
+            printf("Client: Failed to open config file\n");
+            return SLASH_EINVAL;
+        }
 
-    perf_download(conn, &header);
+        char * line = NULL;
+        size_t len = 0;
+        ssize_t read;
 
+        // Read each line as a seperate test
+        while ((read = getline(&line, &len, fp)) != -1) {
+            // Set default values
+            header.chunk_size = chunk_size;
+            header.mtu = mtu;
+            header.n = n;
+            header.protocole = protocole;
+
+            int i0 = 0;
+            int i1 = 0;
+
+            int param_i = 0;
+            // Parse a space seperated list of parameters
+            // The order of parameters is used to determing what it is used for
+            while (i1 <= read)  {
+                if ((line[i1] == ' ' || line[i1] == '\n' || i1 == read) && i1 - i0 > 0) {
+                    char* sub_string = calloc(1, i1 - i0);
+                    memcpy(sub_string, &line[i0], i1 - i0);
+
+                    i0 = i1;
+                    int param = atoi(sub_string);
+                    free(sub_string);
+
+                    if (param_i == 0) {
+                        header.n = param;
+                    } else if (param_i == 1) {
+                        header.chunk_size = param;
+                    } else if (param_i == 2) {
+                        header.mtu = param;
+                    } else if (param_i == 3) {
+                        header.protocole = param;
+                    }
+
+                    param_i += 1;
+                }
+                i1 += 1;
+            }
+
+            // Run test
+            printf("Client: Download test (size = %d, n = %d, mtu = %d, protocole = %d)\n", header.chunk_size, header.n, header.mtu, header.protocole);
+
+            ftp_request_t request;
+            request.version = 1;
+            request.type = FTP_PERFORMANCE_UPLOAD;
+            request.perf_header = header;
+            send_ftp_request(conn, &request);
+
+            perf_download(conn, &header);
+        }
+
+        fclose(fp);
+    } else {
+        printf("Client: Download test (size = %d, n = %d, mtu = %d, protocole = %d)\n", header.chunk_size, header.n, header.mtu, header.protocole);
+
+        header.chunk_size = chunk_size;
+        header.mtu = mtu;
+        header.n = n;
+        header.protocole = protocole;
+
+        ftp_request_t request;
+        request.version = 1;
+        request.type = FTP_PERFORMANCE_UPLOAD;
+        request.perf_header = header;
+        send_ftp_request(conn, &request);
+
+        perf_download(conn, &header);
+    }
+    
     printf("Client: Download test done\n");
 
     csp_close(conn);
