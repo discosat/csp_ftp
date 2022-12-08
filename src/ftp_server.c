@@ -101,6 +101,8 @@ bool ftp_server_handler(csp_conn_t * conn)
 		perf_download(conn, &request->perf_header);
     } else {
         printf("Server: Unknown request\n");
+        // If it fails to recognize request then the connection should be closed
+        return false;
 	}
 
     csp_buffer_free(packet);
