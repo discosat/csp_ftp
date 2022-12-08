@@ -15,23 +15,35 @@
 
 static int slash_csp_upload_file(struct slash *slash)
 {
-    char* local_filename = "";
-    char* remote_filename = "";
-    unsigned int timeout = FTP_CLIENT_TIMEOUT;
     unsigned int node = slash_dfl_node;
+    unsigned int timeout = FTP_CLIENT_TIMEOUT;
 
-    optparse_t * parser = optparse_new("upload_file", "");
+    optparse_t * parser = optparse_new("upload", "<local-file> <remote-file>");
     optparse_add_help(parser);
     optparse_add_unsigned(parser, 'n', "node", "NUM", 0, &node, "node (default = <env>)");
     optparse_add_unsigned(parser, 't', "timout", "NUM", 0, &timeout, "timout for connection (default = FTP_CLIENT_TIMEOUT)");
-    optparse_add_string(parser, 'l', "file", "FILE", &local_filename, "locale path to file");
-    optparse_add_string(parser, 'r', "file", "FILE", &remote_filename, "remote path to file");
 
     int argi = optparse_parse(parser, slash->argc - 1, (const char **) slash->argv + 1);
     if (argi < 0) {
         optparse_del(parser);
 	    return SLASH_EINVAL;
     }
+
+	/* Check if name is present */
+	if (++argi >= slash->argc) {
+		printf("missing local filename\n");
+		return SLASH_EINVAL;
+	}
+
+	char * local_filename = slash->argv[argi];
+
+	/* Check if name is present */
+	if (++argi >= slash->argc) {
+		printf("missing remote filename\n");
+		return SLASH_EINVAL;
+	}
+
+	char * remote_filename = slash->argv[argi];
 
     if (strlen(local_filename) == 0) {
         printf("Local file path cannot be empty\n");
@@ -82,28 +94,39 @@ static int slash_csp_upload_file(struct slash *slash)
 	return SLASH_SUCCESS;
 }
 
-slash_command(upload_file, slash_csp_upload_file, NULL, "Upload a file to the target node");
+slash_command_sub(ftp, upload, slash_csp_upload_file, "<loca-file> <remote-file>", "Upload a file to the target node");
 
 static int slash_csp_download_file(struct slash *slash)
 {
-	char* local_filename = "";
-    char* remote_filename = "";
     unsigned int timeout = FTP_CLIENT_TIMEOUT;
     unsigned int node = slash_dfl_node;
 
-    optparse_t * parser = optparse_new("download_file", "");
+    optparse_t * parser = optparse_new("download", "<remot-file> <local-file>");
     optparse_add_help(parser);
     optparse_add_unsigned(parser, 'n', "node", "NUM", 0, &node, "node (default = <env>)");
     optparse_add_unsigned(parser, 't', "timout", "NUM", 0, &timeout, "timout for connection (default = FTP_CLIENT_TIMEOUT)");
-    optparse_add_string(parser, 'r', "file", "FILE", &remote_filename, "remote path to file");
-    optparse_add_string(parser, 'l', "file", "FILE", &local_filename, "locale path to file");
 
     int argi = optparse_parse(parser, slash->argc - 1, (const char **) slash->argv + 1);
     if (argi < 0) {
         optparse_del(parser);
 	    return SLASH_EINVAL;
     }
-    /**/
+
+	/* Check if name is present */
+	if (++argi >= slash->argc) {
+		printf("missing remote filename\n");
+		return SLASH_EINVAL;
+	}
+
+	char * remote_filename = slash->argv[argi];
+
+	/* Check if name is present */
+	if (++argi >= slash->argc) {
+		printf("missing local filename\n");
+		return SLASH_EINVAL;
+	}
+
+	char * local_filename = slash->argv[argi];
 
     if (strlen(local_filename) == 0) {
         printf("Local file path cannot be empty\n");
@@ -148,26 +171,32 @@ static int slash_csp_download_file(struct slash *slash)
 	return SLASH_SUCCESS;
 }
 
-slash_command(download_file, slash_csp_download_file, NULL, "Download a file from the target node");
+slash_command_sub(ftp,download, slash_csp_download_file, "<remote-dir> <local-dir>", "Download a file from the target node");
 
 
 static int slash_csp_list_file(struct slash *slash)
 {
-    char* remote_directory = "";
     unsigned int timeout = FTP_CLIENT_TIMEOUT;
     unsigned int node = slash_dfl_node;
 
-    optparse_t * parser = optparse_new("list_file", "");
+    optparse_t * parser = optparse_new("ls", "<remote-dir>");
     optparse_add_help(parser);
     optparse_add_unsigned(parser, 'n', "node", "NUM", 0, &node, "node (default = <env>)");
     optparse_add_unsigned(parser, 't', "timout", "NUM", 0, &timeout, "timout for connection (default = FTP_CLIENT_TIMEOUT)");
-    optparse_add_string(parser, 'd', "dir", "FILE", &remote_directory, "remote path to directory");
 
     int argi = optparse_parse(parser, slash->argc - 1, (const char **) slash->argv + 1);
     if (argi < 0) {
         optparse_del(parser);
 	    return SLASH_EINVAL;
     }
+
+	/* Check if name is present */
+	if (++argi >= slash->argc) {
+		printf("missing remode directory\n");
+		return SLASH_EINVAL;
+	}
+
+	char * remote_directory = slash->argv[argi];
 
     if (strlen(remote_directory) == 0) {
         printf("Remote file path cannot be empty\n");
@@ -205,7 +234,7 @@ static int slash_csp_list_file(struct slash *slash)
 	return SLASH_SUCCESS;
 }
 
-slash_command(list_file, slash_csp_list_file, NULL, "List all files in directory");
+slash_command_sub(ftp, ls, slash_csp_list_file, "[remote-dir]", "List all files in directory");
 
 static int slash_csp_move(struct slash *slash)
 {
@@ -562,4 +591,4 @@ static int slash_csp_perf_download(struct slash *slash) {
     return SLASH_SUCCESS;
 }
 
-slash_command(perf_download, slash_csp_perf_download, NULL, "Download a varying amount of data");
+slash_command_sub(ftp, pdownload, slash_csp_perf_download,NULL, "Download a varying amount of data");
