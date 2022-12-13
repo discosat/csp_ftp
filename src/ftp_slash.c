@@ -289,7 +289,7 @@ static int slash_csp_move(struct slash *slash)
 	return SLASH_SUCCESS;
 }
 
-slash_command(move_file, slash_csp_move, NULL, "Move a file");
+slash_command_sub(ftp, move_file, slash_csp_move, NULL, "Move a file");
 
 static int slash_csp_remove(struct slash *slash)
 {
@@ -336,7 +336,7 @@ static int slash_csp_remove(struct slash *slash)
 	return SLASH_SUCCESS;
 }
 
-slash_command(remove_file, slash_csp_remove, NULL, "Remove a file");
+slash_command_sub(ftp, remove_file, slash_csp_remove, NULL, "Remove a file");
 
 
 static int slash_csp_perf_upload(struct slash *slash) {
@@ -464,7 +464,7 @@ static int slash_csp_perf_upload(struct slash *slash) {
     return SLASH_SUCCESS;
 }
 
-slash_command(perf_upload, slash_csp_perf_upload, NULL, "Upload a varying amount of data");
+slash_command_sub(ftp, pupload, slash_csp_perf_upload, NULL, "Upload a varying amount of data");
 
 static int slash_csp_perf_download(struct slash *slash) {
     unsigned int timeout = FTP_CLIENT_TIMEOUT;
