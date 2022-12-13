@@ -32,6 +32,10 @@ void send_v1_header(csp_conn_t* conn, ftp_request_type action, const char * file
         return;
 	}
 
+	for (int i = 0; i < MAX_PATH_LENGTH; i++) {
+		request.v1.address[i] = 0;
+	};
+
 	strncpy(request.v1.address, filename, filename_len);
 	// This will only fail if MAX_PATH_LENGTH > UINT16_MAX
 	request.v1.length = filename_len;
@@ -45,6 +49,8 @@ ftp_status_t ftp_download_file(csp_conn_t* conn, int timeout, const char * filen
 	*dataout_size = 0;
 
 	uint32_t time_begin = csp_get_ms();
+
+	printf("Client: %s\n", filename);
 
 	// Send header file
 	send_v1_header(conn, FTP_SERVER_DOWNLOAD, filename);

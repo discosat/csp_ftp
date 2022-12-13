@@ -488,9 +488,9 @@ static int slash_csp_perf_download(struct slash *slash) {
 
     optparse_add_unsigned(parser, 'c', "count", "NUM", 0,  &n, "Number of packages to send");
     optparse_add_unsigned(parser, 's', "size", "NUM", 0, &chunk_size, "Size of each package");
-    optparse_add_unsigned(parser, 'm', "mtu", "NUM", 0, &mtu, "Minimum transfer unit");
+    optparse_add_unsigned(parser, 'm', "mtu", "NUM", 0, &mtu, "Maximum transfer unit");
     optparse_add_unsigned(parser, 'p', "protocole", "NUM", 0, &protocole, "Protocole either normal (0) or sfp (1)");
-    optparse_add_string(parser, 'f', "file", "FILE", &config, "Path to configuration file");
+    optparse_add_string(parser, 'f', "file", "FILE", &config, "Path to a space seperated configuration file. Each line is a test with the format \"c s m p\"");
 
     int argi = optparse_parse(parser, slash->argc - 1, (const char **) slash->argv + 1);
     if (argi < 0) {
